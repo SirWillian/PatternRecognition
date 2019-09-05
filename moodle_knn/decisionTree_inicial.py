@@ -10,7 +10,6 @@ Original file is located at
 import os
 import numpy as np
 import matplotlib.pylab as plt
-from sklearn.externals.six import StringIO
 
 import sys
 #!{sys.executable} -m pip install pydotplus
@@ -27,8 +26,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import cross_val_score
 
-from IPython.display import Image
-from scipy.stats import randint
+#from IPython.display import Image
+#from scipy.stats import randint
 
 #carrega a base iris do próprio sckit-learn
 iris = load_iris()
@@ -38,26 +37,6 @@ X = iris.data
 y = iris.target #Sepal Length, Sepal Width, Petal Length and Petal Width.
 
 print("As características são: " , iris.feature_names)
-
-##########################
-#Exercício 01
-##########################
-
-#plote o gráfico de dispersão. 
-#Dica: analise o vetor de labels (y) e plote com cores 
-#diferentes as características comprimento e largura da pétala 
-#(armazenadas em X) de cada rótulo.
-plt.figure()
-plt.plot(X[y==0,2],X[y==0,3], 'r*')
-plt.plot(X[y==1,2],X[y==1,3], 'go')
-plt.plot(X[y==2,2],X[y==2,3], 'b')
-plt.xlabel('Petal length')
-plt.ylabel('Petal width')
-plt.show()
-
-
-#analise visualmente como seriam as fronteiras de decisão, 
-#considerando apenas cortes ortogonais.
 
 #separando em conjunto de treinamento e teste
 X_train, X_test, y_train, y_test = train_test_split(iris.data, iris.target, test_size = 0.4)
@@ -69,10 +48,8 @@ print(X_test.shape)
 print(y_train.shape)
 print(y_test.shape)
 
-#classificação utilizando uma árvore de decisão não otimizada
-
 #cria o classificador
-clf = tree.DecisionTreeClassifier(criterion='gini') #testar com (criterion='entropy')
+clf = tree.DecisionTreeClassifier(criterion='gini', max_depth=2) #testar com (criterion='entropy')
 
 #treina o classificador com a base de treinamento
 clf = clf.fit(X_train, y_train)
@@ -94,72 +71,6 @@ print("\nAccuracy\n", acc)
 #cria uma imagem para mostrar a árvore de decisão criada
 plt.figure(figsize=(10,10))
 tree.plot_tree(clf, feature_names=iris.feature_names, class_names=iris.target_names);
-
-##########################
-#Exercício 02 - C
-##Crie um classificador (ie, uma árvore de decisão) com os parâmetros 
-##definidos manualmente por você
-
-#procure informações na documentação.
-#https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html#sklearn.tree.DecisionTreeClassifier
-##########################
-
-# Commented out IPython magic to ensure Python compatibility.
-#classificação utilizando uma árvore de decisão otimizada, onde os parâmetros são definidos pela função RandomizedSearchCV
-
-clf_rs = DecisionTreeClassifier()
-
-##########################
-#Exercício 03 - A
-#Analisar os parâmetros utilizados pela RandomizedSearchCV()
-##########################
-param_dist = {"criterion": ["gini", "entropy"],
-                  "min_samples_split": randint(5, 20),
-                  "max_depth": randint(1, 20),
-                  "min_samples_leaf": randint(1, 20),
-                  "max_leaf_nodes": randint(2, 20)}
-   
-# roda a randomized search     
-clf_rs = RandomizedSearchCV(clf_rs, 
-                            param_distributions=param_dist,
-                            n_iter=5)
-
-##########################
-#Exercício 03 - B
-#Treinar e testar o classificador. Depois, mostrar as métricas de avaliação 
-#(mesmos passos realizados para a árvore não otimizada)
-##########################
-
-#treina o classificador com a base de treinamento
-clf_rs.fit(X_train, y_train)
-
-#testa o classificador com a base de testes
-preditor = clf_rs.predict(X_test)
-        
-#mostrar a acurácia
-acc = sklearn.metrics.accuracy_score(y_test, preditor)
-print("\nAccuracy\n", acc)
-
-##########################
-#Exercício 03 - C
-#Analisar os parâmetros (e índices) testados na RandomizedSearchCV()
-##########################
-print("\nParâmetros e índices do melhor estimador encontrado:")
-print(clf_rs.best_params_)
-print(clf_rs.best_estimator_)
-
-print("\nÍndices para todos os testes realizados pela RandomizedSearchCV():")
-means = clf_rs.cv_results_['mean_test_score'];
-stds = clf_rs.cv_results_['std_test_score'];
-for mean, std, params in zip(means, stds, clf_rs.cv_results_['params']):
-    print("%0.3f (+/-%0.03f) for %r"
-#               % (mean, std * 2, params))
-del mean
-##########################
-#Exercício 03 - D
-##Compare a árvore de decisão com a anterior (não-otimizada)
-##########################
-tree.plot_tree(clf_rs.best_estimator_, feature_names=iris.feature_names, class_names=iris.target_names)
 
 from sklearn.neighbors import KNeighborsClassifier
 neigh = KNeighborsClassifier(n_neighbors=7)
@@ -194,6 +105,22 @@ cv_best_ks = [key  for (key, value) in cross_val_accuracies.items() if value == 
 print("Test Train split best Ks:", test_train_best_ks)
 print("Cross Validation best Ks:", cv_best_ks)
 
+from sklearn.naive_bayes import GaussianNB
+gnb = GaussianNB()
+gnb_pred = gnb.fit(X_train, y_train).predict(X_test)
+
+def print_metrics(estimator_name, ground_truth, prediction):
+    print(estimator_name, "metrics:")
+    print("Accuracy:", sklearn.metrics.accuracy_score(ground_truth, prediction))
+    print("Precision:", sklearn.metrics.precision_score(ground_truth, prediction, average='macro'))
+    print("Recall:", sklearn.metrics.recall_score(ground_truth, prediction, average='macro'))
+    print("F-Measure:", sklearn.metrics.f1_score(ground_truth, prediction, average='macro'))
+    print("Confusion matrix: \n", sklearn.metrics.confusion_matrix(ground_truth, prediction), "\n")
+
+print_metrics("Decision Tree", y_test, preditor)
+print_metrics("Naive Bayes", y_test, gnb_pred)
+print_metrics("KNN", y_test, knn_predict)
+
 from sklearn.datasets import fetch_openml
 MNIST_X, MNIST_y = fetch_openml('mnist_784', version=1, return_X_y=True)
 
@@ -213,8 +140,9 @@ print("Cross validation score:", np.mean(mnist_cv_scores))
 #plt.plot(mnist_cross_val_accuracies.keys(), mnist_cross_val_accuracies.values())
 knn_clf.fit(MNIST_X_train, MNIST_y_train)
 mnist_predict = knn_clf.predict(MNIST_X_test)
-print("Accuracy:", sklearn.metrics.accuracy_score(MNIST_y_test, mnist_predict))
-print("Precision:", sklearn.metrics.precision_score(MNIST_y_test, mnist_predict, average='micro'))
-print("Recall:", sklearn.metrics.recall_score(MNIST_y_test, mnist_predict, average='micro'))
-print("F-Measure:", sklearn.metrics.f1_score(MNIST_y_test, mnist_predict, average='micro'))
-print("Confusion matrix: \n", sklearn.metrics.confusion_matrix(MNIST_y_test, mnist_predict))
+print_metrics("MNIST KNN", MNIST_y_test, mnist_predict)
+#print("Accuracy:", sklearn.metrics.accuracy_score(MNIST_y_test, mnist_predict))
+#print("Precision:", sklearn.metrics.precision_score(MNIST_y_test, mnist_predict, average='micro'))
+#print("Recall:", sklearn.metrics.recall_score(MNIST_y_test, mnist_predict, average='micro'))
+#print("F-Measure:", sklearn.metrics.f1_score(MNIST_y_test, mnist_predict, average='micro'))
+#print("Confusion matrix: \n", sklearn.metrics.confusion_matrix(MNIST_y_test, mnist_predict))
